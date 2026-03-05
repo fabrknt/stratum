@@ -1,0 +1,31 @@
+{
+  "name": "@stratum/evm",
+  "version": "0.1.0",
+  "description": "EVM-specific SDK for Stratum state primitives — merkle trees, event parsing, archive management",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@stratum/core": "0.1.0",
+    "ethers": "^6.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

@@ -1,20 +1,24 @@
 {
-  "license": "ISC",
+  "name": "stratum",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
+    "build": "yarn workspaces foreach -A run build",
+    "test": "yarn workspaces foreach -A run test",
+    "test:core": "cd packages/core && yarn test",
+    "test:evm:sdk": "cd packages/evm && yarn test",
+    "test:solana": "cd contracts/solana && anchor test",
+    "test:evm": "cd contracts/evm && forge test -vvv",
+    "test:evm:fuzz": "cd contracts/evm && forge test --fuzz-runs 10000",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
-  "dependencies": {
-    "@coral-xyz/anchor": "^0.32.1"
-  },
   "devDependencies": {
-    "chai": "^4.3.4",
-    "mocha": "^9.0.3",
-    "ts-mocha": "^10.0.0",
-    "@types/bn.js": "^5.1.0",
-    "@types/chai": "^4.3.0",
-    "@types/mocha": "^9.0.0",
-    "typescript": "^5.7.3",
-    "prettier": "^2.6.2"
-  }
+    "prettier": "^2.6.2",
+    "typescript": "^5.7.3"
+  },
+  "license": "ISC"
 }

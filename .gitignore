@@ -10,3 +10,8 @@ test-ledger
 .yarn
 dist
 deck.html
+
+# Foundry
+contracts/evm/out/
+contracts/evm/cache/
+contracts/evm/lib/

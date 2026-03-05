@@ -1,38 +1,135 @@
 # Stratum
 
-State primitives for Solana programs built with [Anchor](https://www.anchor-lang.com/).
+Multi-chain state primitives achieving 800x state reduction through 5 composable patterns.
+
+Built for **Solana** (Anchor) and **EVM** (Solidity/Foundry).
 
 ## Motivation
 
 Stratum is inspired by Vitalik Buterin's [Hyper-scaling state by creating new forms of state](https://ethresear.ch/t/hyper-scaling-state-by-creating-new-forms-of-state/22077). The core insight is that while execution and data have clear scaling paths (ZK-EVMs, PeerDAS), **state has no magic bullet**. The proposed solution is a "barbell approach": keep existing permanent storage but introduce new, cheaper, more restrictive forms of state alongside it.
 
-The key ideas from the paper that Stratum brings to Solana:
+On Solana, accounts charge rent for on-chain storage. On EVM, `SSTORE` costs 20,000+ gas with no rent/cleanup mechanism. Stratum provides the same 5 primitives on both chains, letting developers minimize permanent state while preserving chain-native patterns.
 
-- **Tiered state** — Not all state deserves the same treatment. Permanent storage (account balances, contract code) coexists with temporary and archivable state (individual claims, event participation, short-lived game state). Developers choose the right tier for each piece of data.
-- **Bitfields for compact boolean state** — Rather than allocating a full account per flag, a single bitfield chunk tracks 2,048 boolean values in 256 bytes. This maps directly to the paper's concept of using bitfields to track spent/unspent UTXOs and claim status.
-- **Merkle commitments for off-chain data** — Commit to 100k entries in 32 bytes on-chain, then verify inclusion via proofs. This enables the pattern of moving bulk data off-chain while retaining on-chain verifiability.
-- **State resurrection** — Archive state off-chain and restore it later with merkle proofs, preventing double-use via bitfield tracking. This mirrors the paper's resurrection mechanism where historical state can be recovered while a bitfield prevents replaying the same proof twice.
-- **Expiry with incentivized cleanup** — Temporary state comes with TTLs and cleanup rewards, so anyone can reclaim expired state and earn a reward. This keeps on-chain state lean without relying on altruistic actors.
-- **Events over storage** — Instead of storing every detail on-chain, emit rich events and keep only aggregate summaries in state. This is the "history summarization without state bloat" pattern.
+## Primitives
 
-### Why this matters on Solana
+| Primitive | What it does | Solana | EVM |
+|-----------|-------------|--------|-----|
+| **Bitfield** | Compact bit tracking (claims, spent flags) | 256-byte PDA chunks | `mapping(uint256 => uint256)` |
+| **Merkle** | Commit to large datasets in 32 bytes | Custom hash | keccak256 with domain separation |
+| **Expiry** | TTL + incentivized cleanup | Rent-based | Deposit-based (ETH deposits, cleaner rewards) |
+| **Events** | History summarization without state bloat | `emit!()` macro | LOG events (8-13x cheaper than storage) |
+| **Resurrection** | Archive off-chain, restore with proofs | PDA accounts | Merkle + Bitfield tracking |
 
-Solana's account model charges rent for on-chain storage, making state costs a first-class concern for developers. As Solana scales transaction throughput, the cost of state relative to execution will shift — creating a new account may become more expensive relative to computation, just as the paper predicts for Ethereum. Stratum gives Solana developers the primitives to build applications that minimize permanent state while preserving the developer-friendly account model. Developers can continue using standard accounts for core program logic while offloading bulk state (token balances, claim tracking, participation records) to cheaper patterns built on bitfields, merkle trees, and event-based history.
+## Monorepo Structure
 
-## Components
+```
+stratum/
+├── packages/
+│   ├── core/              # @stratum/core — chain-agnostic TypeScript
+│   │                      #   MerkleTree, Bitfield, OrderMatcher, types
+│   ├── solana/            # @stratum/solana — Solana SDK
+│   │                      #   PDA derivation, OrderBookClient, solanaHash
+│   └── evm/               # @stratum/evm — EVM SDK
+│                          #   EvmMerkleTree, event parser, archive manager
+├── contracts/
+│   ├── solana/            # Rust/Anchor programs
+│   │   └── programs/
+│   │       ├── stratum/           # Core primitives library
+│   │       ├── airdrop-example/   # Merkle airdrop example
+│   │       └── stratum-orderbook/ # State-optimized order book
+│   └── evm/               # Solidity/Foundry contracts
+│       ├── src/
+│       │   ├── StratumBitfield.sol
+│       │   ├── StratumMerkle.sol
+│       │   ├── StratumExpiry.sol
+│       │   ├── StratumEvents.sol
+│       │   ├── StratumResurrection.sol
+│       │   └── Stratum.sol         # Unified abstract contract
+│       ├── examples/
+│       │   ├── MerkleAirdrop.sol
+│       │   └── StratumOrderBook.sol
+│       └── test/
+│           ├── benchmarks/         # Gas benchmarks
+│           └── fuzz/               # Fuzz tests
+└── apps/
+    └── orderbook-cranker/  # Off-chain matching engine
+```
 
-- **Bitfield** — Compact bit tracking for claims, spent flags, and boolean state. Each chunk tracks 2,048 flags in 256 bytes.
-- **Merkle** — Merkle tree commitments and proof verification. Commit to large datasets (e.g., 100k addresses) in 32 bytes on-chain.
-- **Expiry** — TTL and cleanup crank patterns with configurable grace periods and cleanup rewards.
-- **Events** — History summarization without state bloat. Track aggregate statistics on-chain while emitting detailed events.
-- **Resurrection** — Archive state off-chain and restore it later with merkle proofs.
+## Quick Start
 
-## Programs
+### TypeScript SDK
+
+```typescript
+// Chain-agnostic merkle tree
+import { MerkleTree, Bitfield } from '@stratum/core';
+
+// Solana
+import { solanaHash } from '@stratum/solana';
+const tree = new MerkleTree(leaves, solanaHash);
+
+// EVM — uses EvmMerkleTree for Solidity-compatible hashing
+import { EvmMerkleTree, evmHashLeaf } from '@stratum/evm';
+const evmTree = new EvmMerkleTree(['order0', 'order1']);
+const proof = evmTree.getProof(0);
+// Submit evmTree.root + proof to Solidity StratumMerkle.verify()
+
+// Event reconstruction
+import { rebuildSummary, verifyHashChain, fetchRecordAddedEvents } from '@stratum/evm';
+const events = await fetchRecordAddedEvents(provider, contractAddr, summaryId, fromBlock);
+const summary = rebuildSummary(events);
+
+// Archive management
+import { buildArchive, generateRestoreProof, ArchiveStore } from '@stratum/evm';
+const archive = buildArchive(archiveId, entries);
+const restoreProof = generateRestoreProof(archive, entryIndex);
+```
+
+### Solidity
+
+```solidity
+import {Stratum} from "stratum/Stratum.sol";
+
+contract MyApp is Stratum {
+    // All 5 primitives available via `using...for` directives
+    StratumBitfield.Bitfield internal claims;
+    StratumEvents.HistorySummary public history;
+    StratumExpiry.ExpiryRegistry internal expiry;
+    StratumResurrection.ArchiveRegistry internal archives;
+
+    function claim(uint256 index, bytes32[] memory proof) external {
+        // Verify merkle proof + mark claimed in one call
+        require(
+            StratumMerkle.verifyAndMark(proof, merkleRoot, leaf, index, claims),
+            "Invalid proof or already claimed"
+        );
+        // ...
+    }
+}
+```
+
+## EVM Gas Benchmarks
+
+| Operation | Naive Approach | Stratum | Savings |
+|-----------|---------------|---------|---------|
+| 256 boolean sets | 6.0M gas (`mapping(uint256 => bool)`) | 439K gas (Bitfield) | **13.7x** |
+| 10 record writes | 1.19M gas (struct per record) | 147K gas (Events) | **8.1x** |
+| Merkle verify (100k entries) | N/A | ~6,154 gas | — |
+
+## EVM Examples
+
+### MerkleAirdrop
+
+Port of the Solana airdrop example. Merkle whitelist + Bitfield claim tracking + Expiry for campaign TTL + Events for claim history.
+
+### StratumOrderBook
+
+Port of the Solana order book. Epoch-based order management with merkle root submission, dual-proof settlement verification, and bot-incentivized cleanup.
+
+## Solana Programs
 
 ### airdrop-example
 
 Demonstrates all primitives working together:
-
 - Merkle tree whitelist for eligible recipients
 - Bitfield claim tracking (2,048 claims per chunk at ~0.003 SOL)
 - Expiry with cleanup rewards for reclaiming unused tokens
@@ -40,14 +137,7 @@ Demonstrates all primitives working together:
 
 ### stratum-orderbook
 
-A state-optimized on-chain order book that uses Stratum's primitives to reduce state costs by 99%+ compared to traditional on-chain order storage.
-
-**How it works:**
-1. Orders are collected off-chain by a cranker and batched into epochs
-2. Each epoch gets an immutable merkle root (32 bytes for the entire batch)
-3. Bitfield chunks track order state (active/filled/cancelled) at 0.13 bytes per order
-4. Settlement verifies merkle proofs for both maker and taker, checks bitfields, validates price constraints, and transfers tokens — all in a single instruction
-5. Expired orders and settlement receipts can be cleaned up by anyone for a crank reward
+State-optimized on-chain order book using Stratum's primitives to reduce state costs by 99%+.
 
 **State cost comparison (10,000 orders):**
 | Approach | State Size | Rent Cost |
@@ -55,88 +145,61 @@ A state-optimized on-chain order book that uses Stratum's primitives to reduce s
 | Traditional (account per order) | ~2 MB | ~6.9 SOL |
 | Stratum-optimized (merkle + bitfield) | ~2.5 KB | ~0.02 SOL |
 
-**Instructions:**
-- `create_order_book` — Initialize an order book for a trading pair
-- `create_epoch` / `finalize_epoch` — Epoch lifecycle
-- `submit_epoch_root` — Cranker submits computed merkle root
-- `create_order_chunk` — Create bitfield chunk for order state tracking
-- `settle_match` — Verify merkle proofs + check bitfields + validate price + transfer tokens
-- `cancel_order` — Maker cancels with proof verification + refund
-- `cleanup_expired_orders` / `cleanup_settlement` — Incentivized state reclamation
-
 ## Off-Chain Cranker
 
-The `app/orderbook-cranker` package provides the off-chain matching engine:
-
-- **OrderStore** — Maintains sorted bid/ask books in memory, builds merkle trees per epoch
-- **OrderMatcher** — Price-time priority matching (fills at maker's price when bid >= ask)
-- **EpochCranker** — Collects orders, builds merkle tree, submits root on-chain, finalizes epoch
-- **SettlementSubmitter** — Builds and submits settlement transactions with merkle proofs
-
-```bash
-# Run the cranker
-cd app/orderbook-cranker
-export CRANKER_KEYPAIR_PATH=~/.config/solana/id.json
-export ORDER_BOOK_ADDRESS=<order-book-pubkey>
-export RPC_URL=http://127.0.0.1:8899
-yarn dev
-```
-
-## SDK
-
-The TypeScript SDK (`@stratum/sdk`) provides client-side utilities:
-
-- **MerkleTree** — Build trees, generate proofs, verify proofs. Factory methods: `fromPubkeys()`, `fromPubkeyAmounts()`, `fromOrderLeaves()`
-- **Bitfield** — Client-side bitfield simulation, index splitting, PDA derivation
-- **OrderBookClient** — PDA derivation, order leaf serialization/hashing, on-chain state reads
-
-```typescript
-import { MerkleTree, OrderBookClient, Bitfield } from '@stratum/sdk';
-import { Connection, PublicKey } from '@solana/web3.js';
-
-// Build a merkle tree for an airdrop
-const tree = MerkleTree.fromPubkeys(recipients);
-const proof = tree.getProofArray(index); // For Anchor
-
-// Order book client
-const client = new OrderBookClient(connection, programId);
-const [orderBookPda] = client.deriveOrderBookPda(authority, baseMint, quoteMint);
-const orderHash = client.hashOrderLeaf(order);
-const tree = client.buildOrderMerkleTree(orders);
-```
-
-## Project Structure
-
-```
-programs/
-  stratum/              # Core state primitives library
-  airdrop-example/      # Example: airdrop with all primitives
-  stratum-orderbook/    # State-optimized on-chain order book
-sdk/                    # TypeScript SDK (@stratum/sdk)
-app/
-  orderbook-cranker/    # Off-chain matching engine
-tests/                  # Integration tests
-```
+The `apps/orderbook-cranker` package provides the off-chain matching engine:
+- **OrderStore** — Sorted bid/ask books, merkle tree building per epoch
+- **OrderMatcher** — Price-time priority matching
+- **EpochCranker** — Collects orders, builds merkle tree, submits root on-chain
+- **SettlementSubmitter** — Builds settlement transactions with merkle proofs
 
 ## Development
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/)
-- [Solana CLI](https://docs.solanalabs.com/cli/install)
-- [Anchor](https://www.anchor-lang.com/docs/installation)
-- [Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/)
+- [Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/) — TypeScript packages
+- [Foundry](https://book.getfoundry.sh/) — EVM contracts
+- [Rust](https://rustup.rs/) + [Anchor](https://www.anchor-lang.com/) — Solana contracts
 
-### Build
+### Install
 
 ```sh
-anchor build
+yarn install
 ```
 
 ### Test
 
 ```sh
-anchor test
+# All TypeScript packages
+yarn test
+
+# Core (chain-agnostic)
+cd packages/core && yarn test
+
+# EVM SDK
+cd packages/evm && yarn test
+
+# EVM contracts (Foundry)
+cd contracts/evm && forge test -vvv
+
+# EVM fuzz tests (10,000 runs)
+cd contracts/evm && forge test --fuzz-runs 10000
+
+# Solana contracts
+cd contracts/solana && anchor test
+```
+
+### Build
+
+```sh
+# TypeScript packages
+yarn build
+
+# EVM contracts
+cd contracts/evm && forge build
+
+# Solana contracts
+cd contracts/solana && anchor build
 ```
 
 ## License
