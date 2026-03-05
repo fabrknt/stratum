@@ -1,6 +1,6 @@
 {
-  "name": "Fabrknt Data",
-  "slug": "fabrknt-data",
+  "name": "Fabrknt Data Optimization",
+  "slug": "fabrknt-data-optimization",
   "description": "High-performance data optimization utilities for blockchain applications, including Merkle tree operations and compact bitfield management.",
   "category": "developer-tools",
   "author": "Fabrknt",

@@ -7,5 +7,5 @@ const app = createApp();
 initDatabase();
 
 app.listen(config.port, () => {
-  console.log(`Fabrknt Data QN Add-On running at http://localhost:${config.port}`);
+  console.log(`Fabrknt Data Optimization QN Add-On running at http://localhost:${config.port}`);
 });
