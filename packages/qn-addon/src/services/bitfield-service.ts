@@ -32,7 +32,7 @@ export function fromBytes(bytes: Uint8Array): { setCount: number; capacity: numb
  */
 export function set(bytes: Uint8Array, index: number): { bytes: Uint8Array; wasNewlySet: boolean } {
   const bf = Bitfield.fromBytes(bytes);
-  const wasPreviouslySet = bf.check(index);
+  const wasPreviouslySet = bf.isSet(index);
   bf.set(index);
   return {
     bytes: new Uint8Array(bf.toBytes()),
@@ -45,7 +45,7 @@ export function set(bytes: Uint8Array, index: number): { bytes: Uint8Array; wasN
  */
 export function check(bytes: Uint8Array, index: number): boolean {
   const bf = Bitfield.fromBytes(bytes);
-  return bf.check(index);
+  return bf.isSet(index);
 }
 
 /**

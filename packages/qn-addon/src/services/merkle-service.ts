@@ -44,7 +44,7 @@ export function verifyProof(
   leaf: Uint8Array,
   index: number
 ): boolean {
-  return MerkleTree.verify(proof, root, leaf, index);
+  return MerkleTree.verifyProof(proof, root, leaf, index);
 }
 
 /**
