@@ -3,8 +3,8 @@ import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import type { Order, MatchResult, OrderSide } from './types';
 import { OrderStore } from './order-store';
-import type { StratumOrderbook } from '../../../contracts/solana/target/types/stratum_orderbook';
-import idl from '../../../contracts/solana/target/idl/stratum_orderbook.json';
+import type { StratumOrderbook } from './stratum_orderbook';
+import idl from './stratum_orderbook.json';
 
 /**
  * Settlement transaction builder and submitter.
@@ -162,7 +162,7 @@ export class SettlementSubmitter {
         cranker: this.crankerKeypair.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([this.crankerKeypair])
       .rpc();
 

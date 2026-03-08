@@ -5,8 +5,8 @@ import { MerkleTree } from '@stratum/core';
 import { OrderStore } from './order-store';
 import { OrderMatcher } from './matcher';
 import type { CrankerConfig, EpochState, MatchResult, Order, OrderSide } from './types';
-import type { StratumOrderbook } from '../../../contracts/solana/target/types/stratum_orderbook';
-import idl from '../../../contracts/solana/target/idl/stratum_orderbook.json';
+import type { StratumOrderbook } from './stratum_orderbook';
+import idl from './stratum_orderbook.json';
 
 /**
  * Epoch lifecycle manager.
@@ -171,7 +171,7 @@ export class EpochCranker {
         orderBook: orderBookAddress,
         epoch: epochPda,
         authority: this.wallet.publicKey,
-      })
+      } as any)
       .rpc();
 
     console.log(`Epoch root submitted: tx=${tx}`);
@@ -190,7 +190,7 @@ export class EpochCranker {
         orderBook: orderBookAddress,
         epoch: epochPda,
         authority: this.wallet.publicKey,
-      })
+      } as any)
       .rpc();
 
     console.log(`Epoch finalized: tx=${tx}`);
@@ -306,7 +306,7 @@ export class EpochCranker {
         cranker: this.wallet.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .rpc();
 
     console.log(`Settlement submitted: tx=${tx}`);

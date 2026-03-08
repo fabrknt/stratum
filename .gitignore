@@ -3,6 +3,7 @@
 target
 **/*.rs.bk
 node_modules
+.turbo
 test-ledger
 .env
 .env.*
@@ -15,3 +16,6 @@ deck.html
 contracts/evm/out/
 contracts/evm/cache/
 contracts/evm/lib/
+*.db
+*.db-shm
+*.db-wal
