@@ -40,6 +40,27 @@ export {
   ArchiveStore,
 } from './resurrection';
 
+// ZK proof helpers
+export {
+  encodeGroth16Proof,
+  decodeGroth16Proof,
+  generateBatchSettlementProof,
+  type BatchSettlement,
+} from './zk';
+
+// Cleanup profitability estimation
+export {
+  type CleanupOpportunity,
+  type DynamicExpiryConfigView,
+  type DynamicEntryView,
+  estimateCleanupReward,
+  findProfitableCleanups,
+} from './cleanup-estimator';
+
+// DA layer integration
+export type { DAProvider, DACommitment, DAConfig } from '@stratum/core';
+export { createDAProvider, PersistentArchiveStore, MemoryProvider } from '@stratum/core';
+
 // Re-export core types commonly used with EVM SDK
 export type { HashFunction, MerkleProof, OrderLeaf, MatchResult } from '@stratum/core';
 export { Bitfield, OrderSide } from '@stratum/core';
