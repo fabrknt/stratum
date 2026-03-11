@@ -9,6 +9,7 @@ import {
 } from '../resurrection';
 import { evmHashLeaf } from '../hash';
 import { EvmMerkleTree } from '../merkle';
+import { zeroPadValue, toBeHex } from 'ethers';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -19,7 +20,19 @@ describe('buildArchive', () => {
 
     const archive = buildArchive(archiveId, entries);
 
-    const tree = new EvmMerkleTree(entries);
+    // Tree is built with index-prefixed leaves matching Solidity
+    const indexedEntries = entries.map((entry, i) => {
+      const hex = zeroPadValue(toBeHex(i), 32).slice(2);
+      const indexBytes = new Uint8Array(32);
+      for (let j = 0; j < 32; j++) {
+        indexBytes[j] = parseInt(hex.slice(j * 2, j * 2 + 2), 16);
+      }
+      const result = new Uint8Array(32 + entry.length);
+      result.set(indexBytes);
+      result.set(entry, 32);
+      return result;
+    });
+    const tree = new EvmMerkleTree(indexedEntries);
     expect(archive.merkleRoot).toBe(tree.root);
     expect(archive.entryCount).toBe(3);
     expect(archive.archiveId).toBe(archiveId);

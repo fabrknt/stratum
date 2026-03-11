@@ -94,6 +94,7 @@ library StratumEvents {
 
         // Update rolling window bucket
         if (window.bucketSize > 0) {
+            require(block.timestamp >= window.startTimestamp, "StratumEvents: timestamp before window start");
             uint256 bucketIndex = (block.timestamp - window.startTimestamp) / window.bucketSize;
             bucketIndex = bucketIndex % window.numBuckets; // circular buffer
             window.buckets[bucketIndex].count++;
@@ -111,9 +112,14 @@ library StratumEvents {
         uint32 numBuckets
     ) internal view returns (uint64 count, uint128 sum) {
         if (window.bucketSize == 0) return (0, 0);
+        require(block.timestamp >= window.startTimestamp, "StratumEvents: timestamp before window start");
 
         uint256 currentBucket = (block.timestamp - window.startTimestamp) / window.bucketSize;
         uint32 bucketsToRead = numBuckets > window.numBuckets ? window.numBuckets : numBuckets;
+        // Cap at available buckets to prevent underflow when currentBucket < bucketsToRead
+        if (bucketsToRead > currentBucket + 1) {
+            bucketsToRead = uint32(currentBucket + 1);
+        }
 
         for (uint32 i = 0; i < bucketsToRead; i++) {
             uint256 idx = (currentBucket - i) % window.numBuckets;

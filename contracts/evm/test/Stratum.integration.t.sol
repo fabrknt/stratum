@@ -121,8 +121,9 @@ contract StratumIntegrationTest is Test {
         assertEq(sum, 300);
 
         // 5. Resurrection: archive and restore
-        bytes32 archLeaf0 = StratumMerkle.hashLeaf("archived_0");
-        bytes32 archLeaf1 = StratumMerkle.hashLeaf("archived_1");
+        // Leaves include entryIndex (matching StratumResurrection.restore)
+        bytes32 archLeaf0 = StratumMerkle.hashLeaf(abi.encodePacked(uint256(0), "archived_0"));
+        bytes32 archLeaf1 = StratumMerkle.hashLeaf(abi.encodePacked(uint256(1), "archived_1"));
         bytes32 archRoot = StratumMerkle.hashNode(archLeaf0, archLeaf1);
 
         bytes32 archiveId = keccak256("archive_v1");

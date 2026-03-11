@@ -159,6 +159,15 @@ contract StratumExpiryTest is Test {
         assertEq(deposit, 0.015 ether);
     }
 
+    function test_extend_zero_ttl_reverts() public {
+        bytes32 id = keccak256("entry1");
+        harness.create(id, alice, 3600, 0.01 ether);
+
+        vm.prank(alice);
+        vm.expectRevert("StratumExpiry: zero TTL extension");
+        harness.extend(id, 0, 0.005 ether);
+    }
+
     function test_extend_not_owner_reverts() public {
         bytes32 id = keccak256("entry1");
         harness.create(id, alice, 3600, 0.01 ether);

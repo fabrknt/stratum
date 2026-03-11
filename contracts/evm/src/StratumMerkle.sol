@@ -47,6 +47,9 @@ library StratumMerkle {
 
     // --- Proof verification ---
 
+    /// @dev Maximum proof depth to prevent gas griefing (supports trees up to 2^40 leaves)
+    uint256 internal constant MAX_PROOF_DEPTH = 40;
+
     /// @notice Verify a merkle proof
     /// @param proof The sibling hashes from leaf to root
     /// @param root The expected merkle root
@@ -57,6 +60,7 @@ library StratumMerkle {
         bytes32 root,
         bytes32 leaf
     ) internal pure returns (bool) {
+        require(proof.length <= MAX_PROOF_DEPTH, "StratumMerkle: proof too long");
         bytes32 computedHash = leaf;
 
         for (uint256 i = 0; i < proof.length; i++) {

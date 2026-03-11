@@ -21,10 +21,18 @@ library StratumResurrection {
         bool exists;
     }
 
+    /// @notice DA layer commitment for an archive
+    struct DACommitmentData {
+        bytes32 commitmentHash;  // hash of the DA commitment
+        uint32 blockHeight;      // DA layer block height
+        bool verified;           // whether DA availability has been verified
+    }
+
     /// @notice Registry of archives with restore tracking
     struct ArchiveRegistry {
         mapping(bytes32 => Archive) archives;
         mapping(bytes32 => StratumBitfield.Bitfield) restored; // tracks restored entries per archive
+        mapping(bytes32 => DACommitmentData) daCommitments;    // DA layer commitments per archive
     }
 
     // --- Events ---
@@ -50,6 +58,7 @@ library StratumResurrection {
     ) internal {
         require(!self.archives[archiveId].exists, "StratumResurrection: archive exists");
         require(merkleRoot != bytes32(0), "StratumResurrection: empty root");
+        require(entryCount > 0, "StratumResurrection: zero entries");
 
         self.archives[archiveId] = Archive({
             merkleRoot: merkleRoot,
@@ -81,8 +90,9 @@ library StratumResurrection {
         require(archive.exists, "StratumResurrection: archive not found");
         require(entryIndex < archive.entryCount, "StratumResurrection: index out of range");
 
-        // Verify merkle proof
-        bytes32 leaf = StratumMerkle.hashLeaf(leafData);
+        // Verify merkle proof — bind entryIndex to the leaf so the proof
+        // commits to both the data and its position in the archive.
+        bytes32 leaf = StratumMerkle.hashLeaf(abi.encodePacked(entryIndex, leafData));
         require(
             StratumMerkle.verify(proof, archive.merkleRoot, leaf),
             "StratumResurrection: invalid proof"
@@ -156,5 +166,61 @@ library StratumResurrection {
         bytes32 archiveId
     ) internal view returns (uint256) {
         return self.restored[archiveId].getCount();
+    }
+
+    // --- DA Layer Integration ---
+
+    /// @notice Create an archive with DA layer commitment
+    /// @param self The registry
+    /// @param archiveId Unique identifier for the archive
+    /// @param merkleRoot The merkle root of the archived entries
+    /// @param entryCount Number of entries in the archive
+    /// @param dataHash Hash of the full archived dataset
+    /// @param daCommitmentHash Hash of the DA layer commitment
+    /// @param daBlockHeight Block height on the DA layer
+    function createArchiveWithDA(
+        ArchiveRegistry storage self,
+        bytes32 archiveId,
+        bytes32 merkleRoot,
+        uint64 entryCount,
+        bytes32 dataHash,
+        bytes32 daCommitmentHash,
+        uint32 daBlockHeight
+    ) internal {
+        createArchive(self, archiveId, merkleRoot, entryCount, dataHash);
+
+        self.daCommitments[archiveId] = DACommitmentData({
+            commitmentHash: daCommitmentHash,
+            blockHeight: daBlockHeight,
+            verified: false
+        });
+    }
+
+    /// @notice Mark a DA commitment as verified.
+    /// @dev WARNING: This does NOT perform actual DA verification. The calling
+    ///      contract MUST implement access control and verify the DA proof before
+    ///      calling this function. Only the archive creator should be authorized.
+    /// @param self The registry
+    /// @param archiveId The archive
+    function markDAVerified(
+        ArchiveRegistry storage self,
+        bytes32 archiveId
+    ) internal {
+        Archive storage archive = self.archives[archiveId];
+        require(archive.exists, "StratumResurrection: archive not found");
+        require(msg.sender == archive.creator, "StratumResurrection: not creator");
+        require(self.daCommitments[archiveId].commitmentHash != bytes32(0), "StratumResurrection: no DA commitment");
+        self.daCommitments[archiveId].verified = true;
+    }
+
+    /// @notice Get DA commitment for an archive
+    /// @param self The registry
+    /// @param archiveId The archive
+    /// @return The DA commitment data
+    function getDACommitment(
+        ArchiveRegistry storage self,
+        bytes32 archiveId
+    ) internal view returns (DACommitmentData storage) {
+        return self.daCommitments[archiveId];
     }
 }

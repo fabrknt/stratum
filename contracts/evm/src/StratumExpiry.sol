@@ -83,6 +83,7 @@ library StratumExpiry {
         uint32 additionalTTL,
         uint128 additionalDeposit
     ) internal {
+        require(additionalTTL > 0, "StratumExpiry: zero TTL extension");
         Entry storage entry = self.entries[entryId];
         require(entry.exists, "StratumExpiry: entry not found");
         require(msg.sender == entry.owner, "StratumExpiry: not owner");

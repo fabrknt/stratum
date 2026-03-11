@@ -67,8 +67,9 @@ contract StratumResurrectionTest is Test {
     function setUp() public {
         harness = new ResurrectionHarness();
 
-        leaf0 = StratumMerkle.hashLeaf(LEAF0_DATA);
-        leaf1 = StratumMerkle.hashLeaf(LEAF1_DATA);
+        // Leaves must include entryIndex (matching StratumResurrection.restore)
+        leaf0 = StratumMerkle.hashLeaf(abi.encodePacked(uint256(0), LEAF0_DATA));
+        leaf1 = StratumMerkle.hashLeaf(abi.encodePacked(uint256(1), LEAF1_DATA));
         root = StratumMerkle.hashNode(leaf0, leaf1);
     }
 
