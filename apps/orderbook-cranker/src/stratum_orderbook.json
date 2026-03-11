@@ -625,7 +625,7 @@
           "type": "u16"
         },
         {
-          "name": "settlement_ttl_seconds",
+          "name": "_settlement_ttl_seconds",
           "type": "i64"
         }
       ]
@@ -844,6 +844,441 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "initialize_cranker_registry",
+      "docs": [
+        "Initialize a cranker registry for an order book"
+      ],
+      "discriminator": [
+        236,
+        142,
+        25,
+        129,
+        111,
+        29,
+        84,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book.authority",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.base_mint",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.quote_mint",
+                "account": "OrderBook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "min_stake",
+          "type": "u64"
+        },
+        {
+          "name": "slash_bps",
+          "type": "u16"
+        },
+        {
+          "name": "challenge_period",
+          "type": "i64"
+        },
+        {
+          "name": "rotation_interval",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "migrate_epoch",
+      "docs": [
+        "Migrate an existing Epoch account to the new layout.",
+        "Reallocates 40 extra bytes for `submitted_by` (32) + `challenge_deadline` (8).",
+        "Only the order book authority can call this."
+      ],
+      "discriminator": [
+        45,
+        95,
+        197,
+        140,
+        11,
+        150,
+        183,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book.authority",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.base_mint",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.quote_mint",
+                "account": "OrderBook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.epoch_index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_cranker",
+      "docs": [
+        "Register as a cranker by staking SOL"
+      ],
+      "discriminator": [
+        45,
+        159,
+        125,
+        120,
+        140,
+        224,
+        252,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "cranker_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry.order_book",
+                "account": "CrankerRegistry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_stake",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry"
+              },
+              {
+                "kind": "account",
+                "path": "cranker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "stake_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_challenge",
+      "docs": [
+        "Resolve a challenge by re-verifying the root from order data"
+      ],
+      "discriminator": [
+        81,
+        191,
+        124,
+        119,
+        131,
+        248,
+        157,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "challenge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "challenge.challenger",
+                "account": "Challenge"
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry.order_book",
+                "account": "CrankerRegistry"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.epoch_index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry.order_book",
+                "account": "CrankerRegistry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenger",
+          "writable": true
+        },
+        {
+          "name": "resolver",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "order_data",
+          "type": "bytes"
+        }
+      ]
     },
     {
       "name": "settle_match",
@@ -1138,6 +1573,173 @@
       ]
     },
     {
+      "name": "submit_challenge",
+      "docs": [
+        "Submit a challenge against an epoch root"
+      ],
+      "discriminator": [
+        138,
+        65,
+        75,
+        102,
+        164,
+        142,
+        10,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book.authority",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.base_mint",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.quote_mint",
+                "account": "OrderBook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.epoch_index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenge",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  97,
+                  108,
+                  108,
+                  101,
+                  110,
+                  103,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "epoch"
+              },
+              {
+                "kind": "account",
+                "path": "challenger"
+              }
+            ]
+          }
+        },
+        {
+          "name": "challenger",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "proposed_root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proposed_order_count",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "submit_epoch_root",
       "docs": [
         "Cranker submits a computed merkle root for an epoch's orders"
@@ -1238,9 +1840,401 @@
           "type": "u32"
         }
       ]
+    },
+    {
+      "name": "submit_epoch_root_decentralized",
+      "docs": [
+        "Submit an epoch root as a staked cranker (decentralized mode)"
+      ],
+      "discriminator": [
+        154,
+        135,
+        250,
+        24,
+        52,
+        145,
+        125,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "order_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book.authority",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.base_mint",
+                "account": "OrderBook"
+              },
+              {
+                "kind": "account",
+                "path": "order_book.quote_mint",
+                "account": "OrderBook"
+              }
+            ]
+          }
+        },
+        {
+          "name": "epoch",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  112,
+                  111,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              },
+              {
+                "kind": "account",
+                "path": "epoch.epoch_index",
+                "account": "Epoch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order_book"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_stake",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry"
+              },
+              {
+                "kind": "account",
+                "path": "cranker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "order_count",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "unregister_cranker",
+      "docs": [
+        "Start unstaking cooldown"
+      ],
+      "discriminator": [
+        148,
+        158,
+        234,
+        202,
+        44,
+        69,
+        199,
+        43
+      ],
+      "accounts": [
+        {
+          "name": "cranker_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry.order_book",
+                "account": "CrankerRegistry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_stake",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry"
+              },
+              {
+                "kind": "account",
+                "path": "cranker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_stake",
+      "docs": [
+        "Withdraw stake after cooldown"
+      ],
+      "discriminator": [
+        153,
+        8,
+        22,
+        138,
+        105,
+        176,
+        87,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "cranker_registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry.order_book",
+                "account": "CrankerRegistry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker_stake",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  97,
+                  110,
+                  107,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  107,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "cranker_registry"
+              },
+              {
+                "kind": "account",
+                "path": "cranker"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
+    {
+      "name": "Challenge",
+      "discriminator": [
+        119,
+        250,
+        161,
+        121,
+        119,
+        81,
+        22,
+        208
+      ]
+    },
+    {
+      "name": "CrankerRegistry",
+      "discriminator": [
+        96,
+        198,
+        55,
+        43,
+        200,
+        56,
+        161,
+        175
+      ]
+    },
+    {
+      "name": "CrankerStake",
+      "discriminator": [
+        10,
+        203,
+        152,
+        244,
+        210,
+        169,
+        53,
+        6
+      ]
+    },
     {
       "name": "Epoch",
       "discriminator": [
@@ -1495,9 +2489,322 @@
       "code": 6018,
       "name": "InvalidEpochIndex",
       "msg": "Invalid epoch index"
+    },
+    {
+      "code": 6019,
+      "name": "StakeTooLow",
+      "msg": "Stake amount is below the minimum required"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidSlashBps",
+      "msg": "Slash basis points must not exceed 10000"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidRotationInterval",
+      "msg": "Rotation interval must be greater than zero"
+    },
+    {
+      "code": 6022,
+      "name": "InvalidChallengePeriod",
+      "msg": "Challenge period must be greater than zero"
+    },
+    {
+      "code": 6023,
+      "name": "NotCrankersTurn",
+      "msg": "Not this cranker's turn to submit"
+    },
+    {
+      "code": 6024,
+      "name": "CrankerNotActive",
+      "msg": "Cranker is not active"
+    },
+    {
+      "code": 6025,
+      "name": "AlreadyInCooldown",
+      "msg": "Cranker is already in unstake cooldown"
+    },
+    {
+      "code": 6026,
+      "name": "CooldownNotElapsed",
+      "msg": "Unstake cooldown period has not elapsed"
+    },
+    {
+      "code": 6027,
+      "name": "ChallengeNotPending",
+      "msg": "Challenge is not in pending state"
+    },
+    {
+      "code": 6028,
+      "name": "ChallengeDeadlineExpired",
+      "msg": "Challenge deadline has passed"
+    },
+    {
+      "code": 6029,
+      "name": "ChallengeRootSameAsSubmitted",
+      "msg": "Proposed root must differ from submitted root"
     }
   ],
   "types": [
+    {
+      "name": "Challenge",
+      "docs": [
+        "A challenge against a submitted epoch root"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "epoch",
+            "docs": [
+              "The epoch being challenged"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "challenger",
+            "docs": [
+              "Who submitted the challenge"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "challenged_cranker",
+            "docs": [
+              "The cranker who submitted the disputed root"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "proposed_root",
+            "docs": [
+              "The alternative root proposed by challenger"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proposed_order_count",
+            "docs": [
+              "Number of orders used to compute proposed root"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "docs": [
+              "Challenge status"
+            ],
+            "type": {
+              "defined": {
+                "name": "ChallengeStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "When the challenge was created"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "resolved_at",
+            "docs": [
+              "When the challenge was resolved (0 if pending)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bond",
+            "docs": [
+              "Challenge bond in lamports (returned if accepted, forfeited if rejected)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChallengeStatus",
+      "docs": [
+        "Status of a challenge against a submitted epoch root"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Rejected"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrankerRegistry",
+      "docs": [
+        "Registry managing staked cranker nodes for decentralized root submission"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order_book",
+            "docs": [
+              "Parent order book"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "min_stake",
+            "docs": [
+              "Minimum stake required to register as cranker (lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "slash_bps",
+            "docs": [
+              "Slash percentage in basis points (e.g. 5000 = 50%)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "challenge_period",
+            "docs": [
+              "Challenge period in seconds after root submission"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "cranker_count",
+            "docs": [
+              "Number of registered active crankers"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "current_cranker_index",
+            "docs": [
+              "Current cranker index in rotation"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "rotation_interval",
+            "docs": [
+              "Seconds per cranker turn"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_rotation_at",
+            "docs": [
+              "Last rotation timestamp"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CrankerStake",
+      "docs": [
+        "Individual cranker's staking record"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registry",
+            "docs": [
+              "Parent registry"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "cranker",
+            "docs": [
+              "Cranker's public key"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "stake_amount",
+            "docs": [
+              "Amount staked (lamports)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "index",
+            "docs": [
+              "Position in rotation order"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "is_active",
+            "docs": [
+              "Whether this cranker is active"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "slashed_amount",
+            "docs": [
+              "Total amount slashed from this cranker"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "joined_at",
+            "docs": [
+              "When this cranker registered"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "unstake_requested_at",
+            "docs": [
+              "Unstake cooldown start (0 = not in cooldown)"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "Epoch",
       "docs": [
@@ -1564,6 +2871,20 @@
             "name": "finalized_at",
             "docs": [
               "Finalization timestamp"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "submitted_by",
+            "docs": [
+              "Which cranker submitted this root (Pubkey::default() for legacy single-authority)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "challenge_deadline",
+            "docs": [
+              "Deadline after which epoch can be finalized (0 = no challenge period)"
             ],
             "type": "i64"
           },

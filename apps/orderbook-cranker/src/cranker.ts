@@ -4,9 +4,11 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
 import { MerkleTree } from '@stratum/core';
 import { OrderStore } from './order-store';
 import { OrderMatcher } from './matcher';
-import type { CrankerConfig, EpochState, MatchResult, Order, OrderSide } from './types';
+import type { CrankerConfig, DecentralizedCrankerConfig, EpochState, MatchResult, Order, OrderSide } from './types';
 import type { StratumOrderbook } from './stratum_orderbook';
 import idl from './stratum_orderbook.json';
+import { CrankerStaking } from './staking';
+import { ChallengeMonitor } from './challenge-monitor';
 
 /**
  * Epoch lifecycle manager.
@@ -28,6 +30,8 @@ export class EpochCranker {
   private matcher: OrderMatcher;
   private config: CrankerConfig;
   private isRunning: boolean = false;
+  private staking?: CrankerStaking;
+  private challengeMonitor?: ChallengeMonitor;
 
   constructor(config: CrankerConfig) {
     this.config = config;
@@ -46,6 +50,26 @@ export class EpochCranker {
     );
     this.orderStore = new OrderStore(config.maxOrdersPerEpoch);
     this.matcher = new OrderMatcher();
+
+    // Initialize decentralized mode if configured
+    if ('stakeAmount' in config) {
+      const decConfig = config as DecentralizedCrankerConfig;
+      this.staking = new CrankerStaking(
+        this.program,
+        config.orderBookAddress,
+        this.wallet,
+      );
+
+      if (decConfig.enableChallengeMonitoring) {
+        this.challengeMonitor = new ChallengeMonitor(
+          this.program,
+          this.orderStore,
+          this.wallet,
+          config.orderBookAddress,
+          decConfig.challengeCheckIntervalMs ?? 5000,
+        );
+      }
+    }
   }
 
   /**
@@ -59,10 +83,14 @@ export class EpochCranker {
     this.isRunning = true;
 
     // Run match loop and epoch rotation in parallel
-    const matchLoop = this.runMatchLoop();
-    const epochLoop = this.runEpochLoop();
+    const loops: Promise<void>[] = [this.runMatchLoop(), this.runEpochLoop()];
 
-    await Promise.all([matchLoop, epochLoop]);
+    // Start challenge monitoring if in decentralized mode
+    if (this.challengeMonitor) {
+      loops.push(this.challengeMonitor.start());
+    }
+
+    await Promise.all(loops);
   }
 
   /**
@@ -71,6 +99,12 @@ export class EpochCranker {
   stop(): void {
     console.log('Stopping cranker...');
     this.isRunning = false;
+    this.challengeMonitor?.stop();
+  }
+
+  /** Get the staking client (if in decentralized mode) */
+  getStaking(): CrankerStaking | undefined {
+    return this.staking;
   }
 
   /**
@@ -91,6 +125,14 @@ export class EpochCranker {
    * Process current epoch: build tree, submit root, finalize
    */
   async processCurrentEpoch(): Promise<void> {
+    // In decentralized mode, check if it's our turn
+    if (this.staking) {
+      const isMyTurn = await this.staking.isMyTurn();
+      if (!isMyTurn) {
+        return;
+      }
+    }
+
     const epoch = this.orderStore.getCurrentEpoch();
 
     if (epoch.orders.length === 0) {

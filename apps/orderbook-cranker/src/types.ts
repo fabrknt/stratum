@@ -55,3 +55,15 @@ export interface CrankerConfig {
   /** How often to submit settlements (ms) */
   settlementIntervalMs: number;
 }
+
+/** Extended config for decentralized cranker mode */
+export interface DecentralizedCrankerConfig extends CrankerConfig {
+  /** Amount to stake when registering (lamports) */
+  stakeAmount: number;
+  /** Whether to monitor and challenge invalid roots */
+  enableChallengeMonitoring: boolean;
+  /** Bond amount for submitting challenges (lamports) */
+  challengeBond: number;
+  /** How often to check for invalid roots (ms) */
+  challengeCheckIntervalMs: number;
+}
