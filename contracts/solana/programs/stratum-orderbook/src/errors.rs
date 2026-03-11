@@ -58,4 +58,41 @@ pub enum OrderBookError {
 
     #[msg("Invalid epoch index")]
     InvalidEpochIndex,
+
+    // --- Cranker Registry Errors ---
+
+    #[msg("Stake amount is below the minimum required")]
+    StakeTooLow,
+
+    #[msg("Slash basis points must not exceed 10000")]
+    InvalidSlashBps,
+
+    #[msg("Rotation interval must be greater than zero")]
+    InvalidRotationInterval,
+
+    #[msg("Challenge period must be greater than zero")]
+    InvalidChallengePeriod,
+
+    #[msg("Not this cranker's turn to submit")]
+    NotCrankersTurn,
+
+    #[msg("Cranker is not active")]
+    CrankerNotActive,
+
+    #[msg("Cranker is already in unstake cooldown")]
+    AlreadyInCooldown,
+
+    #[msg("Unstake cooldown period has not elapsed")]
+    CooldownNotElapsed,
+
+    // --- Challenge Errors ---
+
+    #[msg("Challenge is not in pending state")]
+    ChallengeNotPending,
+
+    #[msg("Challenge deadline has passed")]
+    ChallengeDeadlineExpired,
+
+    #[msg("Proposed root must differ from submitted root")]
+    ChallengeRootSameAsSubmitted,
 }

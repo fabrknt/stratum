@@ -114,6 +114,12 @@ pub struct Epoch {
     /// Finalization timestamp
     pub finalized_at: i64,
 
+    /// Which cranker submitted this root (Pubkey::default() for legacy single-authority)
+    pub submitted_by: Pubkey,
+
+    /// Deadline after which epoch can be finalized (0 = no challenge period)
+    pub challenge_deadline: i64,
+
     /// PDA bump
     pub bump: u8,
 }
@@ -128,6 +134,8 @@ impl Epoch {
         1 +  // root_submitted
         8 +  // created_at
         8 +  // finalized_at
+        32 + // submitted_by
+        8 +  // challenge_deadline
         1;   // bump
 
     pub const SEED_PREFIX: &'static [u8] = b"epoch";

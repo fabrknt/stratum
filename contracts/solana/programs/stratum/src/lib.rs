@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 pub mod bitfield;
+pub mod dynamic_expiry;
 pub mod errors;
 pub mod events;
 pub mod expiry;
@@ -8,6 +9,7 @@ pub mod merkle;
 pub mod resurrection;
 
 pub use bitfield::*;
+pub use dynamic_expiry::*;
 pub use errors::*;
 pub use events::*;
 pub use expiry::*;

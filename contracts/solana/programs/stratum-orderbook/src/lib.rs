@@ -3,11 +3,15 @@ use anchor_lang::solana_program::program::invoke_signed;
 use stratum::merkle::{hash_struct, verify_proof};
 use stratum::expiry::ExpiryConfig;
 
+pub mod challenge;
+pub mod cranker_registry;
 pub mod errors;
 pub mod events;
 pub mod matching;
 pub mod state;
 
+use challenge::{Challenge, ChallengeStatus};
+use cranker_registry::{CrankerRegistry, CrankerStake};
 use errors::OrderBookError;
 use events::*;
 use matching::{validate_price_match, calculate_quote_amount};
@@ -30,7 +34,7 @@ pub mod stratum_orderbook {
         ctx: Context<CreateOrderBook>,
         tick_size: u64,
         fee_bps: u16,
-        settlement_ttl_seconds: i64,
+        _settlement_ttl_seconds: i64,
     ) -> Result<()> {
         let ob = &mut ctx.accounts.order_book;
         let clock = Clock::get()?;
@@ -89,6 +93,8 @@ pub mod stratum_orderbook {
         epoch.root_submitted = false;
         epoch.created_at = clock.unix_timestamp;
         epoch.finalized_at = 0;
+        epoch.submitted_by = Pubkey::default();
+        epoch.challenge_deadline = 0;
         epoch.bump = ctx.bumps.epoch;
 
         ob.current_epoch = ob.current_epoch.saturating_add(1);
@@ -512,11 +518,30 @@ pub mod stratum_orderbook {
             }
         }
 
-        // Pay cleanup reward to caller
-        let reward = ob.settlement_expiry.cleanup_reward;
-        if reward > 0 {
-            **ctx.accounts.order_book.to_account_info().try_borrow_mut_lamports()? -= reward;
-            **ctx.accounts.cleaner.to_account_info().try_borrow_mut_lamports()? += reward;
+        // Pay dynamic cleanup reward to caller
+        // Base reward escalates over 24 hours (86400s) up to 10x, capped at account balance
+        let base_reward = ob.settlement_expiry.cleanup_reward;
+        let overdue = clock.unix_timestamp.saturating_sub(order.expires_at).max(0);
+        let escalation_period: i64 = 86400; // 24 hours
+        let max_multiplier: u64 = 10;
+
+        let reward = if escalation_period <= 0 || overdue <= 0 {
+            base_reward
+        } else {
+            let factor = if overdue >= escalation_period {
+                max_multiplier
+            } else {
+                1 + ((max_multiplier - 1) * overdue as u64) / escalation_period as u64
+            };
+            base_reward.saturating_mul(factor)
+        };
+
+        // Cap at available lamports
+        let available = ctx.accounts.order_book.to_account_info().lamports();
+        let capped_reward = reward.min(available.saturating_sub(890880)); // preserve rent-exempt minimum
+        if capped_reward > 0 {
+            **ctx.accounts.order_book.to_account_info().try_borrow_mut_lamports()? -= capped_reward;
+            **ctx.accounts.cleaner.to_account_info().try_borrow_mut_lamports()? += capped_reward;
         }
 
         emit!(ExpiredOrderCleaned {
@@ -525,7 +550,7 @@ pub mod stratum_orderbook {
             epoch_index: order.epoch_index,
             order_index: order.order_index,
             cleaner: ctx.accounts.cleaner.key(),
-            reward,
+            reward: capped_reward,
         });
 
         Ok(())
@@ -547,19 +572,313 @@ pub mod stratum_orderbook {
             OrderBookError::SettlementNotExpired
         );
 
-        let reward = receipt.expiry.cleanup_reward;
-        if reward > 0 {
-            **ctx.accounts.settlement_receipt.to_account_info().try_borrow_mut_lamports()? -= reward;
-            **ctx.accounts.cleaner.to_account_info().try_borrow_mut_lamports()? += reward;
+        // Dynamic reward: base escalates over 24h up to 10x
+        let base_reward = receipt.expiry.cleanup_reward;
+        let overdue = clock.unix_timestamp.saturating_sub(cleanup_time).max(0);
+        let escalation_period: i64 = 86400;
+        let max_multiplier: u64 = 10;
+
+        let reward = if escalation_period <= 0 || overdue <= 0 {
+            base_reward
+        } else {
+            let factor = if overdue >= escalation_period {
+                max_multiplier
+            } else {
+                1 + ((max_multiplier - 1) * overdue as u64) / escalation_period as u64
+            };
+            base_reward.saturating_mul(factor)
+        };
+
+        let available = ctx.accounts.settlement_receipt.to_account_info().lamports();
+        let capped_reward = reward.min(available.saturating_sub(890880));
+        if capped_reward > 0 {
+            **ctx.accounts.settlement_receipt.to_account_info().try_borrow_mut_lamports()? -= capped_reward;
+            **ctx.accounts.cleaner.to_account_info().try_borrow_mut_lamports()? += capped_reward;
         }
 
         emit!(SettlementCleaned {
             settlement: ctx.accounts.settlement_receipt.key(),
             cleaner: ctx.accounts.cleaner.key(),
-            reward,
+            reward: capped_reward,
         });
 
         // Close the account — rent goes to cleaner
+        Ok(())
+    }
+
+    // =========================================================================
+    // Migration Instructions
+    // =========================================================================
+
+    /// Migrate an existing Epoch account to the new layout.
+    /// Reallocates 40 extra bytes for `submitted_by` (32) + `challenge_deadline` (8).
+    /// Only the order book authority can call this.
+    pub fn migrate_epoch(ctx: Context<MigrateEpoch>) -> Result<()> {
+        let epoch = &mut ctx.accounts.epoch;
+
+        // If already migrated (submitted_by is non-default or challenge_deadline is set),
+        // we still allow realloc to be idempotent — just set defaults.
+        if epoch.submitted_by == Pubkey::default() && epoch.challenge_deadline == 0 {
+            // Fields are already zero-initialized after realloc, but be explicit
+            epoch.submitted_by = Pubkey::default();
+            epoch.challenge_deadline = 0;
+        }
+
+        Ok(())
+    }
+
+    // =========================================================================
+    // Decentralized Cranker Instructions
+    // =========================================================================
+
+    /// Initialize a cranker registry for an order book
+    pub fn initialize_cranker_registry(
+        ctx: Context<InitializeCrankerRegistry>,
+        min_stake: u64,
+        slash_bps: u16,
+        challenge_period: i64,
+        rotation_interval: i64,
+    ) -> Result<()> {
+        let registry = &mut ctx.accounts.cranker_registry;
+        let clock = Clock::get()?;
+
+        require!(min_stake > 0, OrderBookError::StakeTooLow);
+        require!(slash_bps <= 10000, OrderBookError::InvalidSlashBps);
+        require!(rotation_interval > 0, OrderBookError::InvalidRotationInterval);
+
+        registry.order_book = ctx.accounts.order_book.key();
+        registry.min_stake = min_stake;
+        registry.slash_bps = slash_bps;
+        registry.challenge_period = challenge_period;
+        registry.cranker_count = 0;
+        registry.current_cranker_index = 0;
+        registry.rotation_interval = rotation_interval;
+        registry.last_rotation_at = clock.unix_timestamp;
+        registry.bump = ctx.bumps.cranker_registry;
+
+        Ok(())
+    }
+
+    /// Register as a cranker by staking SOL
+    pub fn register_cranker(
+        ctx: Context<RegisterCranker>,
+        stake_amount: u64,
+    ) -> Result<()> {
+        let registry = &mut ctx.accounts.cranker_registry;
+        let stake = &mut ctx.accounts.cranker_stake;
+        let clock = Clock::get()?;
+
+        require!(stake_amount >= registry.min_stake, OrderBookError::StakeTooLow);
+
+        // Transfer stake from cranker to stake PDA
+        let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.cranker.key(),
+            &stake.key(),
+            stake_amount,
+        );
+        anchor_lang::solana_program::program::invoke(
+            &transfer_ix,
+            &[
+                ctx.accounts.cranker.to_account_info(),
+                stake.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+
+        stake.registry = registry.key();
+        stake.cranker = ctx.accounts.cranker.key();
+        stake.stake_amount = stake_amount;
+        stake.index = registry.cranker_count;
+        stake.is_active = true;
+        stake.slashed_amount = 0;
+        stake.joined_at = clock.unix_timestamp;
+        stake.unstake_requested_at = 0;
+        stake.bump = ctx.bumps.cranker_stake;
+
+        registry.cranker_count = registry.cranker_count.saturating_add(1);
+
+        Ok(())
+    }
+
+    /// Start unstaking cooldown
+    pub fn unregister_cranker(ctx: Context<UnregisterCranker>) -> Result<()> {
+        let stake = &mut ctx.accounts.cranker_stake;
+        let registry = &mut ctx.accounts.cranker_registry;
+        let clock = Clock::get()?;
+
+        require!(stake.is_active, OrderBookError::CrankerNotActive);
+        require!(stake.unstake_requested_at == 0, OrderBookError::AlreadyInCooldown);
+
+        stake.is_active = false;
+        stake.unstake_requested_at = clock.unix_timestamp;
+        registry.cranker_count = registry.cranker_count.saturating_sub(1);
+
+        Ok(())
+    }
+
+    /// Withdraw stake after cooldown
+    pub fn withdraw_stake(ctx: Context<WithdrawStake>) -> Result<()> {
+        let stake = &ctx.accounts.cranker_stake;
+        let clock = Clock::get()?;
+
+        require!(
+            stake.can_withdraw(clock.unix_timestamp),
+            OrderBookError::CooldownNotElapsed
+        );
+
+        // The account will be closed by the `close` attribute,
+        // returning all lamports to the cranker
+        Ok(())
+    }
+
+    /// Submit an epoch root as a staked cranker (decentralized mode)
+    pub fn submit_epoch_root_decentralized(
+        ctx: Context<SubmitEpochRootDecentralized>,
+        root: [u8; 32],
+        order_count: u32,
+    ) -> Result<()> {
+        let registry = &ctx.accounts.cranker_registry;
+        let stake = &ctx.accounts.cranker_stake;
+        let epoch = &mut ctx.accounts.epoch;
+        let clock = Clock::get()?;
+
+        require!(stake.is_active, OrderBookError::CrankerNotActive);
+        require!(!epoch.is_finalized, OrderBookError::EpochAlreadyFinalized);
+        require!(!epoch.root_submitted, OrderBookError::EpochRootAlreadySubmitted);
+
+        // Check rotation: either it's this cranker's turn or fallback window is active
+        let is_turn = registry.is_crankers_turn(stake.index, clock.unix_timestamp);
+        let is_fallback = registry.is_fallback_window(clock.unix_timestamp);
+        require!(
+            is_turn || is_fallback,
+            OrderBookError::NotCrankersTurn
+        );
+
+        epoch.merkle_root = root;
+        epoch.order_count = order_count;
+        epoch.root_submitted = true;
+        epoch.submitted_by = ctx.accounts.cranker.key();
+        epoch.challenge_deadline = clock.unix_timestamp + registry.challenge_period;
+
+        let ob = &mut ctx.accounts.order_book;
+        ob.total_orders = ob.total_orders.saturating_add(order_count as u64);
+
+        emit!(EpochRootSubmitted {
+            epoch: epoch.key(),
+            merkle_root: root,
+            order_count,
+        });
+
+        Ok(())
+    }
+
+    /// Submit a challenge against an epoch root
+    pub fn submit_challenge(
+        ctx: Context<SubmitChallenge>,
+        proposed_root: [u8; 32],
+        proposed_order_count: u32,
+    ) -> Result<()> {
+        let epoch = &ctx.accounts.epoch;
+        let challenge = &mut ctx.accounts.challenge;
+        let clock = Clock::get()?;
+
+        require!(epoch.root_submitted, OrderBookError::EpochNotFinalized);
+        require!(!epoch.is_finalized, OrderBookError::EpochAlreadyFinalized);
+        require!(
+            clock.unix_timestamp <= epoch.challenge_deadline,
+            OrderBookError::ChallengeDeadlineExpired
+        );
+
+        // Proposed root must differ from submitted root
+        require!(
+            proposed_root != epoch.merkle_root,
+            OrderBookError::ChallengeRootSameAsSubmitted
+        );
+
+        // Transfer bond from challenger to challenge PDA
+        let transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+            &ctx.accounts.challenger.key(),
+            &challenge.key(),
+            Challenge::MIN_BOND,
+        );
+        anchor_lang::solana_program::program::invoke(
+            &transfer_ix,
+            &[
+                ctx.accounts.challenger.to_account_info(),
+                challenge.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+
+        challenge.epoch = epoch.key();
+        challenge.challenger = ctx.accounts.challenger.key();
+        challenge.challenged_cranker = epoch.submitted_by;
+        challenge.proposed_root = proposed_root;
+        challenge.proposed_order_count = proposed_order_count;
+        challenge.status = ChallengeStatus::Pending;
+        challenge.created_at = clock.unix_timestamp;
+        challenge.resolved_at = 0;
+        challenge.bond = Challenge::MIN_BOND;
+        challenge.bump = ctx.bumps.challenge;
+
+        Ok(())
+    }
+
+    /// Resolve a challenge by re-verifying the root from order data
+    pub fn resolve_challenge(
+        ctx: Context<ResolveChallenge>,
+        order_data: Vec<u8>,
+    ) -> Result<()> {
+        let clock = Clock::get()?;
+
+        require!(
+            ctx.accounts.challenge.status == ChallengeStatus::Pending,
+            OrderBookError::ChallengeNotPending
+        );
+
+        // Recompute root from provided order data
+        let computed_root = stratum::merkle::hash_leaf(&order_data);
+
+        // If challenger's root matches recomputation, challenge is accepted
+        let challenge_valid = ctx.accounts.challenge.proposed_root == computed_root;
+
+        if challenge_valid {
+            ctx.accounts.challenge.status = ChallengeStatus::Accepted;
+
+            // Update epoch with correct root
+            let proposed_root = ctx.accounts.challenge.proposed_root;
+            let proposed_count = ctx.accounts.challenge.proposed_order_count;
+            ctx.accounts.epoch.merkle_root = proposed_root;
+            ctx.accounts.epoch.order_count = proposed_count;
+
+            // Slash the cranker who submitted the wrong root
+            if let Some(cranker_stake) = ctx.remaining_accounts.first() {
+                let mut lamports = cranker_stake.try_borrow_mut_lamports()?;
+                let slash_amount = ctx.accounts.cranker_registry.calculate_slash(
+                    **lamports,
+                );
+                **lamports -= slash_amount;
+                **ctx.accounts.challenger.to_account_info().try_borrow_mut_lamports()? += slash_amount;
+            }
+        } else {
+            ctx.accounts.challenge.status = ChallengeStatus::Rejected;
+
+            // Forfeit challenger's bond (transfer what's available above rent-exempt min)
+            let bond = ctx.accounts.challenge.bond;
+            if bond > 0 {
+                let challenge_lamports = **ctx.accounts.challenge.to_account_info().try_borrow_lamports()?;
+                let rent = anchor_lang::prelude::Rent::get()?;
+                let rent_exempt_min = rent.minimum_balance(Challenge::SPACE);
+                let transferable = challenge_lamports.saturating_sub(rent_exempt_min).min(bond);
+                if transferable > 0 {
+                    **ctx.accounts.challenge.to_account_info().try_borrow_mut_lamports()? -= transferable;
+                    **ctx.accounts.resolver.to_account_info().try_borrow_mut_lamports()? += transferable;
+                }
+            }
+        }
+
+        ctx.accounts.challenge.resolved_at = clock.unix_timestamp;
+
         Ok(())
     }
 }
@@ -1056,4 +1375,265 @@ pub struct CleanupSettlement<'info> {
     /// Anyone can call cleanup
     #[account(mut)]
     pub cleaner: Signer<'info>,
+}
+
+// =============================================================================
+// Migration Account Contexts
+// =============================================================================
+
+#[derive(Accounts)]
+pub struct MigrateEpoch<'info> {
+    #[account(
+        seeds = [
+            OrderBook::SEED_PREFIX,
+            order_book.authority.as_ref(),
+            order_book.base_mint.as_ref(),
+            order_book.quote_mint.as_ref()
+        ],
+        bump = order_book.bump,
+        constraint = order_book.authority == authority.key() @ OrderBookError::Unauthorized
+    )]
+    pub order_book: Account<'info, OrderBook>,
+
+    #[account(
+        mut,
+        realloc = Epoch::SPACE,
+        realloc::payer = authority,
+        realloc::zero = false,
+        seeds = [
+            Epoch::SEED_PREFIX,
+            order_book.key().as_ref(),
+            &epoch.epoch_index.to_le_bytes()
+        ],
+        bump = epoch.bump,
+        constraint = epoch.order_book == order_book.key() @ OrderBookError::Unauthorized
+    )]
+    pub epoch: Account<'info, Epoch>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// =============================================================================
+// Decentralized Cranker Account Contexts
+// =============================================================================
+
+#[derive(Accounts)]
+pub struct InitializeCrankerRegistry<'info> {
+    #[account(
+        seeds = [
+            OrderBook::SEED_PREFIX,
+            order_book.authority.as_ref(),
+            order_book.base_mint.as_ref(),
+            order_book.quote_mint.as_ref()
+        ],
+        bump = order_book.bump,
+        constraint = order_book.authority == authority.key() @ OrderBookError::Unauthorized
+    )]
+    pub order_book: Account<'info, OrderBook>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = CrankerRegistry::SPACE,
+        seeds = [CrankerRegistry::SEED_PREFIX, order_book.key().as_ref()],
+        bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RegisterCranker<'info> {
+    #[account(
+        mut,
+        seeds = [CrankerRegistry::SEED_PREFIX, cranker_registry.order_book.as_ref()],
+        bump = cranker_registry.bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(
+        init,
+        payer = cranker,
+        space = CrankerStake::SPACE,
+        seeds = [CrankerStake::SEED_PREFIX, cranker_registry.key().as_ref(), cranker.key().as_ref()],
+        bump
+    )]
+    pub cranker_stake: Account<'info, CrankerStake>,
+
+    #[account(mut)]
+    pub cranker: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UnregisterCranker<'info> {
+    #[account(
+        mut,
+        seeds = [CrankerRegistry::SEED_PREFIX, cranker_registry.order_book.as_ref()],
+        bump = cranker_registry.bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(
+        mut,
+        seeds = [CrankerStake::SEED_PREFIX, cranker_registry.key().as_ref(), cranker.key().as_ref()],
+        bump = cranker_stake.bump,
+        constraint = cranker_stake.cranker == cranker.key() @ OrderBookError::Unauthorized
+    )]
+    pub cranker_stake: Account<'info, CrankerStake>,
+
+    pub cranker: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawStake<'info> {
+    #[account(
+        seeds = [CrankerRegistry::SEED_PREFIX, cranker_registry.order_book.as_ref()],
+        bump = cranker_registry.bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(
+        mut,
+        close = cranker,
+        seeds = [CrankerStake::SEED_PREFIX, cranker_registry.key().as_ref(), cranker.key().as_ref()],
+        bump = cranker_stake.bump,
+        constraint = cranker_stake.cranker == cranker.key() @ OrderBookError::Unauthorized
+    )]
+    pub cranker_stake: Account<'info, CrankerStake>,
+
+    #[account(mut)]
+    pub cranker: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SubmitEpochRootDecentralized<'info> {
+    #[account(
+        mut,
+        seeds = [
+            OrderBook::SEED_PREFIX,
+            order_book.authority.as_ref(),
+            order_book.base_mint.as_ref(),
+            order_book.quote_mint.as_ref()
+        ],
+        bump = order_book.bump
+    )]
+    pub order_book: Account<'info, OrderBook>,
+
+    #[account(
+        mut,
+        seeds = [
+            Epoch::SEED_PREFIX,
+            order_book.key().as_ref(),
+            &epoch.epoch_index.to_le_bytes()
+        ],
+        bump = epoch.bump,
+        constraint = epoch.order_book == order_book.key() @ OrderBookError::Unauthorized
+    )]
+    pub epoch: Account<'info, Epoch>,
+
+    #[account(
+        seeds = [CrankerRegistry::SEED_PREFIX, order_book.key().as_ref()],
+        bump = cranker_registry.bump,
+        constraint = cranker_registry.order_book == order_book.key() @ OrderBookError::Unauthorized
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(
+        seeds = [CrankerStake::SEED_PREFIX, cranker_registry.key().as_ref(), cranker.key().as_ref()],
+        bump = cranker_stake.bump,
+        constraint = cranker_stake.cranker == cranker.key() @ OrderBookError::Unauthorized
+    )]
+    pub cranker_stake: Account<'info, CrankerStake>,
+
+    pub cranker: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SubmitChallenge<'info> {
+    #[account(
+        seeds = [
+            OrderBook::SEED_PREFIX,
+            order_book.authority.as_ref(),
+            order_book.base_mint.as_ref(),
+            order_book.quote_mint.as_ref()
+        ],
+        bump = order_book.bump
+    )]
+    pub order_book: Account<'info, OrderBook>,
+
+    #[account(
+        seeds = [
+            Epoch::SEED_PREFIX,
+            order_book.key().as_ref(),
+            &epoch.epoch_index.to_le_bytes()
+        ],
+        bump = epoch.bump,
+        constraint = epoch.order_book == order_book.key() @ OrderBookError::Unauthorized
+    )]
+    pub epoch: Account<'info, Epoch>,
+
+    #[account(
+        seeds = [CrankerRegistry::SEED_PREFIX, order_book.key().as_ref()],
+        bump = cranker_registry.bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    #[account(
+        init,
+        payer = challenger,
+        space = Challenge::SPACE,
+        seeds = [Challenge::SEED_PREFIX, epoch.key().as_ref(), challenger.key().as_ref()],
+        bump
+    )]
+    pub challenge: Account<'info, Challenge>,
+
+    #[account(mut)]
+    pub challenger: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ResolveChallenge<'info> {
+    #[account(
+        mut,
+        seeds = [Challenge::SEED_PREFIX, epoch.key().as_ref(), challenge.challenger.as_ref()],
+        bump = challenge.bump
+    )]
+    pub challenge: Account<'info, Challenge>,
+
+    #[account(
+        mut,
+        seeds = [
+            Epoch::SEED_PREFIX,
+            cranker_registry.order_book.as_ref(),
+            &epoch.epoch_index.to_le_bytes()
+        ],
+        bump = epoch.bump
+    )]
+    pub epoch: Account<'info, Epoch>,
+
+    #[account(
+        seeds = [CrankerRegistry::SEED_PREFIX, cranker_registry.order_book.as_ref()],
+        bump = cranker_registry.bump
+    )]
+    pub cranker_registry: Account<'info, CrankerRegistry>,
+
+    /// CHECK: Challenger receives slash rewards
+    #[account(mut, constraint = challenger.key() == challenge.challenger @ OrderBookError::Unauthorized)]
+    pub challenger: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub resolver: Signer<'info>,
 }
