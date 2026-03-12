@@ -5,3 +5,4 @@ export * from './matcher';
 export * from './types';
 export * from './zk';
 export * from './da';
+export * from './compat';
