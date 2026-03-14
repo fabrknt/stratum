@@ -1,6 +1,6 @@
 {
-  "name": "@stratum/core",
-  "version": "0.1.0",
+  "name": "@fabrknt/stratum-core",
+  "version": "1.0.0",
   "description": "Chain-agnostic state primitives — merkle trees, bitfields, order matching",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -24,5 +24,9 @@
     "vitest": "^1.0.0"
   },
   "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "license": "MIT"
 }

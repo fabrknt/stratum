@@ -1,8 +1,8 @@
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { Program, BN } from '@coral-xyz/anchor';
 import type { Wallet } from '@coral-xyz/anchor';
-import { MerkleTree } from '@stratum/core';
-import { solanaHash } from '@stratum/solana';
+import { MerkleTree } from '@fabrknt/stratum-core';
+import { solanaHash } from '@fabrknt/stratum-solana';
 import type { OrderStore } from './order-store';
 import type { StratumOrderbook } from './stratum_orderbook';
 

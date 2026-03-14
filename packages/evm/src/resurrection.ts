@@ -1,8 +1,8 @@
 import { keccak256, zeroPadValue, toBeHex } from 'ethers';
 import { EvmMerkleTree } from './merkle';
 import { evmHashLeaf } from './hash';
-import type { DAProvider, DACommitment } from '@stratum/core';
-import { serializeEntries, deserializeEntries } from '@stratum/core';
+import type { DAProvider, DACommitment } from '@fabrknt/stratum-core';
+import { serializeEntries, deserializeEntries } from '@fabrknt/stratum-core';
 
 /**
  * Pack entryIndex (uint256) with leafData, matching Solidity:

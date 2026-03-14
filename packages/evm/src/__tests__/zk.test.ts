@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { encodeGroth16Proof, decodeGroth16Proof, generateBatchSettlementProof } from '../zk';
-import { ZKProofSystem } from '@stratum/core';
+import { ZKProofSystem } from '@fabrknt/stratum-core';
 
 describe('encodeGroth16Proof / decodeGroth16Proof', () => {
   it('roundtrips a proof with known values', () => {

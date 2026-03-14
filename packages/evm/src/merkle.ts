@@ -3,7 +3,7 @@ import { evmHashLeaf, evmHashNode } from './hash';
 /**
  * EVM-compatible merkle tree matching Solidity StratumMerkle.
  *
- * Key differences from @stratum/core MerkleTree:
+ * Key differences from @fabrknt/stratum-core MerkleTree:
  * - Leaf hashing: double-hash with 0x00 prefix (keccak256(0x00 || keccak256(data)))
  * - Node hashing: sorted pairs with 0x01 prefix (commutative)
  * - Proof verification: no index needed (commutative hashing)

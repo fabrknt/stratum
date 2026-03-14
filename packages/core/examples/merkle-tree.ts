@@ -1,5 +1,5 @@
 /**
- * @stratum/core — Merkle Tree Example
+ * @fabrknt/stratum-core — Merkle Tree Example
  *
  * Demonstrates building a merkle tree from a whitelist of addresses,
  * generating proofs, and verifying them off-chain.
@@ -7,7 +7,7 @@
  * Use case: Airdrop eligibility, on-chain whitelist verification,
  * order book commitment schemes.
  */
-import { MerkleTree, hashLeaf } from '@stratum/core';
+import { MerkleTree, hashLeaf } from '@fabrknt/stratum-core';
 
 // ---------------------------------------------------------------------------
 // 1. Build a merkle tree from a list of eligible addresses

@@ -1,9 +1,9 @@
-import { OrderMatcher as CoreMatcher } from '@stratum/core';
+import { OrderMatcher as CoreMatcher } from '@fabrknt/stratum-core';
 import { Order, MatchResult } from './types';
 
 /**
  * Price-time priority order matcher.
- * Wraps @stratum/core OrderMatcher with Solana-specific Order types.
+ * Wraps @fabrknt/stratum-core OrderMatcher with Solana-specific Order types.
  */
 export class OrderMatcher {
   private core = new CoreMatcher();

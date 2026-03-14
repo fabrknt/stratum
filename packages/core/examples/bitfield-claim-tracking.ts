@@ -1,5 +1,5 @@
 /**
- * @stratum/core — Bitfield Claim Tracking Example
+ * @fabrknt/stratum-core — Bitfield Claim Tracking Example
  *
  * Demonstrates using a compact bitfield to track which items have been
  * claimed/processed. Each bit represents one slot — 256 bytes tracks
@@ -8,7 +8,7 @@
  * Use case: Airdrop claim tracking, vote deduplication, order settlement
  * tracking, coupon redemption.
  */
-import { Bitfield, splitIndex, globalIndex, chunksNeeded, BITS_PER_CHUNK } from '@stratum/core';
+import { Bitfield, splitIndex, globalIndex, chunksNeeded, BITS_PER_CHUNK } from '@fabrknt/stratum-core';
 
 // ---------------------------------------------------------------------------
 // 1. Create a bitfield for tracking 500 airdrop claims

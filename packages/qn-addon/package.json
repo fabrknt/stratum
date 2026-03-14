@@ -1,6 +1,6 @@
 {
-  "name": "@stratum/qn-addon",
-  "version": "0.1.0",
+  "name": "@fabrknt/stratum-qn-addon",
+  "version": "1.0.0",
   "description": "QuickNode Marketplace add-on for the Stratum Data Optimizer",
   "main": "dist/index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@stratum/core": "workspace:*",
+    "@fabrknt/stratum-core": "workspace:*",
     "better-sqlite3": "^11.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -26,6 +26,10 @@
     "@types/node": "^20.14.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
   },
   "license": "MIT"
 }

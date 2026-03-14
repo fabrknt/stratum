@@ -1,5 +1,6 @@
 {
-  "name": "@stratum/contracts-solana",
+  "name": "@fabrknt/stratum-contracts-solana",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "test": "anchor test"

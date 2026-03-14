@@ -6,7 +6,7 @@ import {StratumBitfield} from "./StratumBitfield.sol";
 /// @title StratumMerkle
 /// @notice Merkle tree verification with domain-separated keccak256.
 ///         Leaf prefix 0x00, node prefix 0x01. Double-hashes leaves. Sorted pairs.
-/// @dev Compatible with @stratum/core MerkleTree when using keccak256 hash function.
+/// @dev Compatible with @fabrknt/stratum-core MerkleTree when using keccak256 hash function.
 library StratumMerkle {
     using StratumBitfield for StratumBitfield.Bitfield;
 

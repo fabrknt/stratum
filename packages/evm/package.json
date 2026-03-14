@@ -1,6 +1,6 @@
 {
-  "name": "@stratum/evm",
-  "version": "0.1.0",
+  "name": "@fabrknt/stratum-evm",
+  "version": "1.0.0",
   "description": "EVM-specific SDK for Stratum state primitives — merkle trees, event parsing, archive management",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -18,7 +18,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@stratum/core": "workspace:*",
+    "@fabrknt/stratum-core": "workspace:*",
     "ethers": "^6.0.0"
   },
   "devDependencies": {
@@ -27,5 +27,9 @@
     "vitest": "^1.0.0"
   },
   "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "license": "MIT"
 }

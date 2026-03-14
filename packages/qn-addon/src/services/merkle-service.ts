@@ -1,4 +1,4 @@
-import { MerkleTree, hashLeaf } from '@stratum/core';
+import { MerkleTree, hashLeaf } from '@fabrknt/stratum-core';
 
 export interface BuildTreeResult {
   root: Uint8Array;

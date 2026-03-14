@@ -1,4 +1,4 @@
-import type { HashFunction } from '@stratum/core';
+import type { HashFunction } from '@fabrknt/stratum-core';
 
 /**
  * Solana hash function — FNV-1a variant expanded to 256 bits.

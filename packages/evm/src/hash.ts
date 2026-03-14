@@ -1,5 +1,5 @@
 import { keccak256, concat, getBytes } from 'ethers';
-import type { HashFunction } from '@stratum/core';
+import type { HashFunction } from '@fabrknt/stratum-core';
 
 /**
  * EVM leaf hash matching Solidity StratumMerkle.hashLeaf:
@@ -26,7 +26,7 @@ export function evmHashNode(a: string, b: string): string {
 }
 
 /**
- * Raw keccak256 as a HashFunction for @stratum/core.
+ * Raw keccak256 as a HashFunction for @fabrknt/stratum-core.
  *
  * NOTE: This is the raw keccak256 without domain separation.
  * For full EVM-compatible merkle trees, use EvmMerkleTree which

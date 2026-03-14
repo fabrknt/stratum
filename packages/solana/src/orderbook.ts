@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { MerkleTree, hashLeaf } from '@stratum/core';
-import { splitIndex, BITS_PER_CHUNK } from '@stratum/core';
+import { MerkleTree, hashLeaf } from '@fabrknt/stratum-core';
+import { splitIndex, BITS_PER_CHUNK } from '@fabrknt/stratum-core';
 import { solanaHash } from './hash';
 
 /** Order side matching the on-chain enum */

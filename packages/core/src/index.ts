@@ -1,4 +1,4 @@
-// @stratum/core — Chain-agnostic state primitives
+// @fabrknt/stratum-core — Chain-agnostic state primitives
 export * from './merkle';
 export * from './bitfield';
 export * from './matcher';

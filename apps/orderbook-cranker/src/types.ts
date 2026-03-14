@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { OrderSide as CoreOrderSide } from '@stratum/core';
+import { OrderSide as CoreOrderSide } from '@fabrknt/stratum-core';
 
 /** Order side — re-exported from core */
 export const OrderSide = CoreOrderSide;

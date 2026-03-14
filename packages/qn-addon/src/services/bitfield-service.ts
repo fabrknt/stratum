@@ -1,4 +1,4 @@
-import { Bitfield } from '@stratum/core';
+import { Bitfield } from '@fabrknt/stratum-core';
 
 export interface BitfieldStats {
   setCount: number;

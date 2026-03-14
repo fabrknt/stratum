@@ -25,11 +25,11 @@ On Solana, accounts charge rent for on-chain storage. On EVM, `SSTORE` costs 20,
 ```
 stratum/
 ├── packages/
-│   ├── core/              # @stratum/core — chain-agnostic TypeScript
+│   ├── core/              # @fabrknt/stratum-core — chain-agnostic TypeScript
 │   │                      #   MerkleTree, Bitfield, OrderMatcher, types
-│   ├── solana/            # @stratum/solana — Solana SDK
+│   ├── solana/            # @fabrknt/stratum-solana — Solana SDK
 │   │                      #   PDA derivation, OrderBookClient, solanaHash
-│   ├── evm/               # @stratum/evm — EVM SDK
+│   ├── evm/               # @fabrknt/stratum-evm — EVM SDK
 │   │                      #   EvmMerkleTree, event parser, archive manager
 │   └── qn-addon/          # Fabrknt Data Optimization — QuickNode Marketplace add-on
 ├── contracts/
@@ -62,25 +62,25 @@ stratum/
 
 ```typescript
 // Chain-agnostic merkle tree
-import { MerkleTree, Bitfield } from '@stratum/core';
+import { MerkleTree, Bitfield } from '@fabrknt/stratum-core';
 
 // Solana
-import { solanaHash } from '@stratum/solana';
+import { solanaHash } from '@fabrknt/stratum-solana';
 const tree = new MerkleTree(leaves, solanaHash);
 
 // EVM — uses EvmMerkleTree for Solidity-compatible hashing
-import { EvmMerkleTree, evmHashLeaf } from '@stratum/evm';
+import { EvmMerkleTree, evmHashLeaf } from '@fabrknt/stratum-evm';
 const evmTree = new EvmMerkleTree(['order0', 'order1']);
 const proof = evmTree.getProof(0);
 // Submit evmTree.root + proof to Solidity StratumMerkle.verify()
 
 // Event reconstruction
-import { rebuildSummary, verifyHashChain, fetchRecordAddedEvents } from '@stratum/evm';
+import { rebuildSummary, verifyHashChain, fetchRecordAddedEvents } from '@fabrknt/stratum-evm';
 const events = await fetchRecordAddedEvents(provider, contractAddr, summaryId, fromBlock);
 const summary = rebuildSummary(events);
 
 // Archive management
-import { buildArchive, generateRestoreProof, ArchiveStore } from '@stratum/evm';
+import { buildArchive, generateRestoreProof, ArchiveStore } from '@fabrknt/stratum-evm';
 const archive = buildArchive(archiveId, entries);
 const restoreProof = generateRestoreProof(archive, entryIndex);
 ```

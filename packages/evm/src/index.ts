@@ -1,4 +1,4 @@
-// @stratum/evm — EVM-specific SDK for Stratum state primitives
+// @fabrknt/stratum-evm — EVM-specific SDK for Stratum state primitives
 
 // Hash functions matching Solidity StratumMerkle
 export { evmHashLeaf, evmHashNode, evmHash } from './hash';
@@ -58,9 +58,9 @@ export {
 } from './cleanup-estimator';
 
 // DA layer integration
-export type { DAProvider, DACommitment, DAConfig } from '@stratum/core';
-export { createDAProvider, PersistentArchiveStore, MemoryProvider } from '@stratum/core';
+export type { DAProvider, DACommitment, DAConfig } from '@fabrknt/stratum-core';
+export { createDAProvider, PersistentArchiveStore, MemoryProvider } from '@fabrknt/stratum-core';
 
 // Re-export core types commonly used with EVM SDK
-export type { HashFunction, MerkleProof, OrderLeaf, MatchResult } from '@stratum/core';
-export { Bitfield, OrderSide } from '@stratum/core';
+export type { HashFunction, MerkleProof, OrderLeaf, MatchResult } from '@fabrknt/stratum-core';
+export { Bitfield, OrderSide } from '@fabrknt/stratum-core';

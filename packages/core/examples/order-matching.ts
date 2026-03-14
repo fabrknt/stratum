@@ -1,5 +1,5 @@
 /**
- * @stratum/core — Order Matching Example
+ * @fabrknt/stratum-core — Order Matching Example
  *
  * Demonstrates price-time priority order matching for an off-chain
  * order book. The matcher finds crosses between bids and asks,
@@ -8,8 +8,8 @@
  * Use case: DEX order books, RFQ systems, dark pool matching,
  * off-chain cranker settlement.
  */
-import { OrderMatcher } from '@stratum/core';
-import type { Matchable } from '@stratum/core';
+import { OrderMatcher } from '@fabrknt/stratum-core';
+import type { Matchable } from '@fabrknt/stratum-core';
 
 // ---------------------------------------------------------------------------
 // 1. Define some orders

@@ -1,7 +1,7 @@
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { AnchorProvider, Program, Wallet, BN } from '@coral-xyz/anchor';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from '@solana/spl-token';
-import { MerkleTree } from '@stratum/core';
+import { MerkleTree } from '@fabrknt/stratum-core';
 import { OrderStore } from './order-store';
 import { OrderMatcher } from './matcher';
 import type { CrankerConfig, DecentralizedCrankerConfig, EpochState, MatchResult, Order, OrderSide } from './types';

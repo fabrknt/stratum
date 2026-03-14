@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
-import { MerkleTree } from '@stratum/core';
-import { solanaHash } from '@stratum/solana';
+import { MerkleTree } from '@fabrknt/stratum-core';
+import { solanaHash } from '@fabrknt/stratum-solana';
 import { Order, OrderSide, EpochState } from './types';
 
 /**

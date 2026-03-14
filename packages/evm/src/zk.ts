@@ -1,6 +1,6 @@
 import { AbiCoder, keccak256 } from 'ethers';
-import type { ZKProof } from '@stratum/core';
-import { ZKProofSystem } from '@stratum/core';
+import type { ZKProof } from '@fabrknt/stratum-core';
+import { ZKProofSystem } from '@fabrknt/stratum-core';
 
 /** Batch settlement data for ZK proof generation */
 export interface BatchSettlement {

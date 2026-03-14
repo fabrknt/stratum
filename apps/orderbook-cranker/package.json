@@ -1,6 +1,6 @@
 {
-  "name": "@stratum/orderbook-cranker",
-  "version": "0.1.0",
+  "name": "@fabrknt/stratum-orderbook-cranker",
+  "version": "1.0.0",
   "description": "Off-chain cranker for the Stratum state-optimized order book",
   "main": "dist/index.js",
   "scripts": {
@@ -13,14 +13,18 @@
     "@coral-xyz/anchor": "^0.32.0",
     "@solana/web3.js": "^1.95.0",
     "@solana/spl-token": "^0.4.0",
-    "@stratum/core": "workspace:*",
-    "@stratum/solana": "workspace:*"
+    "@fabrknt/stratum-core": "workspace:*",
+    "@fabrknt/stratum-solana": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
   },
   "license": "MIT"
 }

@@ -1,6 +1,6 @@
 {
-  "name": "@stratum/solana",
-  "version": "0.1.0",
+  "name": "@fabrknt/stratum-solana",
+  "version": "1.0.0",
   "description": "Solana-specific SDK for Stratum state primitives",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -18,7 +18,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@stratum/core": "workspace:*",
+    "@fabrknt/stratum-core": "workspace:*",
     "@coral-xyz/anchor": "^0.32.0",
     "@solana/web3.js": "^1.95.0"
   },
@@ -29,5 +29,9 @@
     "vitest": "^1.0.0"
   },
   "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "license": "MIT"
 }
