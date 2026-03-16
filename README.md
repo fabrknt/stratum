@@ -232,4 +232,4 @@ cd contracts/solana && anchor build
 
 ## License
 
-ISC
+MIT
