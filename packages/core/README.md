@@ -1,5 +1,8 @@
 # @fabrknt/stratum-core
 
+[![npm version](https://img.shields.io/npm/v/@fabrknt/stratum-core.svg)](https://www.npmjs.com/package/@fabrknt/stratum-core)
+[![npm downloads](https://img.shields.io/npm/dm/@fabrknt/stratum-core.svg)](https://www.npmjs.com/package/@fabrknt/stratum-core)
+
 Chain-agnostic state primitives -- merkle trees, bitfields, order matching, ZK circuits, and data availability providers.
 
 Not every DeFi protocol needs TradFi compliance -- but if yours does, you shouldn't have to rebuild from scratch. Fabrknt plugs into your existing protocol with composable SDKs and APIs. No permissioned forks, no separate deployments.
