@@ -25,8 +25,8 @@
   },
   "files": ["dist"],
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "license": "MIT"
 }
