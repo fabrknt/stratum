@@ -1,6 +1,11 @@
 # Stratum
 
+[![npm version](https://img.shields.io/npm/v/@fabrknt/stratum-core.svg)](https://www.npmjs.com/package/@fabrknt/stratum-core)
+[![npm downloads](https://img.shields.io/npm/dm/@fabrknt/stratum-core.svg)](https://www.npmjs.com/package/@fabrknt/stratum-core)
+
 Multi-chain state primitives achieving 800x state reduction through 5 composable patterns.
+
+Part of [Fabrknt](https://fabrknt.com) — plug-in compliance for existing DeFi protocols. `npm install @fabrknt/stratum-core`
 
 Built for **Solana** (Anchor) and **EVM** (Solidity/Foundry).
 
